@@ -14,10 +14,9 @@ Best regard for you.
 
 # Import everything we need 
 import pexpect 
-
+import socket
 # User login information 
 user = 'root'  
-ip = '192.168.1.104'  
 mypassword = 'test0000'
 
 # Function send_file: send one file every time 
@@ -75,22 +74,56 @@ def local_cmd(cmd,mypassword):
     #child.expect(pexpect.EOF)
     print "\nlocal cmd '"+cmd+"'"
 
+#Function: To verify if the ip is accessable
+
+def valid_ip(addr):
+
+    try:
+        child = pexpect.spawn('ssh root@%s %s'%(addr,'cd'))
+        i = child.expect(['yes','Password:',pexpect.TIMEOUT],timeout=5)
+        if i == 0:
+            child.sendline('no')
+            return True
+        else:
+            return False
+
+    except pexpect.EOF:
+
+        child.close()
+        return False
+
 # The main function
 if __name__ == '__main__':  
- 
-    # file list that will send to dest machine
-    filelist = [
-	['test.sh','/usr/bin/'],
-	['test.mkv','/var/log/']
+
+    ipfilter = [
+       105,
+       110    
     ]
 
-    local_cmd('rm /home/cros/.ssh/known_hosts','cros')
+    # file list that will send to dest machine
+    filelist = [
+	#['test.sh','/usr/bin/'],
+	#['test.mkv','/var/log/']i
+         ['mp_test.txt','/']
+    ]
+    count = 0
+    #local_cmd('rm /home/cros/.ssh/known_hosts','cros')
+    # traversal all hosts in the ip range define as below 
+    for ip in range(100,120):
+        # kick off the host define by user 
+	if ip in ipfilter:
+            print '192.168.2.%s Kicked of by user\r\n'%ip
+        elif valid_ip('192.168.2.%s'%ip) == False:
+            print 'Skip....Invalid ip address\r\n'
+        else:
+            count = count + 1
+            print '192.168.2.%s will be control\r\n'%ip
+ 
+            local_cmd('rm /home/cros/.ssh/known_hosts','cros')
+            send_cmd(user,'192.168.2.%s'%ip,'mount -o remount,rw /',mypassword)
     
-    send_cmd(user,ip,'mount -o remount,rw /',mypassword)
+            for one_file in filelist:
+                send_file('192.168.2.%s'%ip,user,mypassword,one_file[0],one_file[1])  
     
-    for one_file in filelist:
-        send_file(ip,user,mypassword,one_file[0],one_file[1])  
-    
-    send_cmd(user,ip,'test.sh',mypassword)
-
+    print 'There are %s host has been updated!'%count
  
