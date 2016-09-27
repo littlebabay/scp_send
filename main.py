@@ -81,7 +81,7 @@ def valid_ip(addr):
     try:
         child = pexpect.spawn('ssh root@%s %s'%(addr,'cd'))
         i = child.expect(['yes','Password:',pexpect.TIMEOUT],timeout=5)
-        if i == 0:
+        if i == 0 or i ==1:
             child.sendline('no')
             return True
         else:
