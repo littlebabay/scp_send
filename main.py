@@ -15,64 +15,132 @@ Best regard for you.
 # Import everything we need 
 import pexpect 
 import socket
+
 # User login information 
 user = 'root'  
 mypassword = 'test0000'
 
-# Function send_file: send one file every time 
-def send_file(ip,user,mypassword,filename,dest):
-    
-    child = pexpect.spawn('scp %s %s@%s:%s' % ( filename,user,ip,dest ))  
-    try: 
-        child.expect ('Password:')  
-        child.sendline (mypassword)
+"""
+  This is remote_client class to discribe a remote client machine.
+we can do some operates on the remote machine through network.We 
+need to know the ip address ,user name , password of client.
 
-    except pexpect.EOF:
-        child.close()
+"""
+class remote_client:
+    
+    ip = ""
+    usr = ""
+    pwd = ""
+
+    # init function
+    def __init__(self, ip, usr, pwd):
+        self.ip = ip
+        self.usr = usr
+        self.pwd = pwd
+        print "\r\n######################### %s@%s  ############################"%(self.usr,self.ip)
+    
+    # Function send_file: send one file every time 
+    def send_file(self, file_list):
    
-    child.expect(pexpect.EOF)
-    print child.before
+        for files in file_list:
+
+            child = pexpect.spawn('scp %s %s@%s:%s' % ( files[0], self.usr, self.ip, files[1] ))  
+            try: 
+                i = child.expect (['Password:','yes',pexpect.TIMEOUT],timeout = 30)  
+            
+                if i == 0:
+                    child.sendline (self.pwd)
+                elif i == 1:
+                    child.sendline ('yes')
+                    child.expect('Password:')
+                    child.sendline (self.pwd)
+                    child.read()
+            except pexpect.EOF:
+                child.close()
+                print 'Not receive the needed key word!'
+
+            except pexpect.TIMEOUT:
+                child.close()
+                print 'Timeout Error!'
+   
+            child.expect(pexpect.EOF)
+            print child.before
     
 
-# Function send_cmd: send one 
-def send_cmd(user,ip,cmd,mypassword): 
+    # Function send_cmd: send one 
+    def send_cmd(self,cmd): 
 
-    child = pexpect.spawn('ssh %s@%s %s' % (user,ip,cmd))
-    try:
-        i = child.expect(['Password:','yes','shit'])
-        if i == 0:
-            child.sendline (mypassword)
-        elif i == 1:
-            child.sendline ('yes')
-            child.expect ('Password:')
-            child.sendline (mypassword)
-        elif i == 2:
-            print 'Time Out Error\r\n'
-    except pexpect.EOF:
-        child.close()
+        child = pexpect.spawn('ssh %s@%s %s' % (self.usr, self.ip, cmd))
+        try:
+            i = child.expect(['Password:','yes',pexpect.TIMEOUT],timeout=5)
+            if i == 0:
+                child.sendline (self.pwd)
+            elif i == 1:
+                child.sendline ('yes')
+                child.expect ('Password:')
+                child.sendline (self.pwd)
+                child.read()
 
-    #child.expect(pexpect.EOF)
-    print "\nsend cmd '"+cmd+"'"
+        except pexpect.EOF:
+            child.close()
+            print 'Not receive the needed key word!'
 
-# Function local_cmd: run a local cmd 
-def local_cmd(cmd,mypassword): 
+        except pexpect.TIMEOUT: 
+            child.close()
+            print 'Timeout Error!'
 
-    child = pexpect.spawn('%s' % (cmd))
-    try:
-        i = child.expect(['Password:','yes','shit'])
-        if i == 0:
-            child.sendline (mypassword)
-        elif i == 1:
-            child.sendline ('yes')
-            child.expect ('Password:')
-            child.sendline (mypassword)
-        elif i == 2:
-            print 'Time Out Error\r\n'
-    except pexpect.EOF:
-        child.close()
+        child.expect(pexpect.EOF)
+        print "send cmd '"+cmd+"'"
 
-    #child.expect(pexpect.EOF)
-    print "\nlocal cmd '"+cmd+"'"
+    def __del__(self):
+
+        print 'Exit\r\n'
+
+"""
+   This is a local_host class to describe ourself,we can 
+
+run some command on local host.you need to know my user name
+
+and password.
+
+"""
+class local_host():
+
+    usr = ''
+    pwd = ''
+
+    def __init__(self,usr,pwd):
+        self.usr = usr
+        self.pwd  = pwd
+
+    # Function local_cmd: run a local cmd 
+    def local_cmd(self,cmd): 
+
+        child = pexpect.spawn('%s' % (cmd))
+        try:
+            i = child.expect(['Password:','yes','',pexpect.TIMEOUT],timeout = 5)
+            if i == 0:
+                child.sendline (self.pwd)
+                print 1
+            elif i == 1:
+                child.sendline ('yes')
+                child.expect ('Password:')
+                child.sendline (self.pwd)
+                print 2
+            child.read()
+            child.close()
+
+        except pexpect.EOF:
+            child.close()
+            print 'No valid Response!'
+
+        except pexpect.TIMEOUT:
+            child.close()
+            print 'Timeout Error'
+            
+        #child.expect(pexpect.EOF)
+        print "\nlocal cmd '"+cmd+"'"
+
 
 #Function: To verify if the ip is accessable
 
@@ -95,35 +163,47 @@ def valid_ip(addr):
 # The main function
 if __name__ == '__main__':  
 
-    ipfilter = [
-       105,
-       110    
+    file_list = (
+        #['image.dev.bin-800M','/usr/local/']
+        ['ddr_read_data_eye_up.up','/usr/local/'],
+        ['ddr_read_data_eye_down.down','/usr/local/']
+    )    
+
+    ip_base = '192.168.2'    
+
+    ip_filter = [
+        101
     ]
 
-    # file list that will send to dest machine
-    filelist = [
-	#['test.sh','/usr/bin/'],
-	#['test.mkv','/var/log/']i
-         ['mp_test.txt','/']
-    ]
     count = 0
-    #local_cmd('rm /home/cros/.ssh/known_hosts','cros')
-    # traversal all hosts in the ip range define as below 
-    for ip in range(100,120):
-        # kick off the host define by user 
-	if ip in ipfilter:
-            print '192.168.2.%s Kicked of by user\r\n'%ip
+
+    host = local_host('cros','cros')
+
+    for ip in range(118,119):
+
+        host.local_cmd('rm /home/cros/.ssh/known_hosts')
+   
+        if ip in ip_filter:
+            print "Skip Ip"
+
         elif valid_ip('192.168.2.%s'%ip) == False:
-            print 'Skip....Invalid ip address\r\n'
+            print "Invalid IP"
+
         else:
-            count = count + 1
-            print '192.168.2.%s will be control\r\n'%ip
- 
-            local_cmd('rm /home/cros/.ssh/known_hosts','cros')
-            send_cmd(user,'192.168.2.%s'%ip,'mount -o remount,rw /',mypassword)
+             
+            count = count +1
+            
+            client = remote_client('192.168.2.%s'%ip,'root','test0000')
     
-            for one_file in filelist:
-                send_file('192.168.2.%s'%ip,user,mypassword,one_file[0],one_file[1])  
-    
-    print 'There are %s host has been updated!'%count
- 
+            client.send_file(file_list)
+
+            # client.send_cmd('sudo chmod 777 update_firmware && /usr/local/update_firmware')
+            #client.send_cmd('stop powerd')
+            
+            del client
+
+    print 'Successfuly update %s client'%count
+
+
+
+
