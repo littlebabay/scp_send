@@ -14,7 +14,8 @@ Best regard for you.
 
 # Import everything we need 
 import pexpect 
-import socket
+import time
+import threading
 
 # User login information 
 user = 'root'  
@@ -37,14 +38,13 @@ class remote_client:
         self.ip = ip
         self.usr = usr
         self.pwd = pwd
-        print "\r\n######################### %s@%s  ############################"%(self.usr,self.ip)
     
     # Function send_file: send one file every time 
     def send_file(self, file_list):
    
         for files in file_list:
 
-            child = pexpect.spawn('scp %s %s@%s:%s' % ( files[0], self.usr, self.ip, files[1] ))  
+            child = pexpect.spawn('scp -C %s %s@%s:%s' % ( files[0], self.usr, self.ip, files[1] ))  
             try: 
                 i = child.expect (['Password:','yes',pexpect.TIMEOUT],timeout = 30)  
             
@@ -54,7 +54,7 @@ class remote_client:
                     child.sendline ('yes')
                     child.expect('Password:')
                     child.sendline (self.pwd)
-                    child.read()
+                   # child.read()
             except pexpect.EOF:
                 child.close()
                 print 'Not receive the needed key word!'
@@ -62,10 +62,9 @@ class remote_client:
             except pexpect.TIMEOUT:
                 child.close()
                 print 'Timeout Error!'
-   
-            child.expect(pexpect.EOF)
-            print child.before
-    
+
+            child.expect(pexpect.EOF)  
+            print child.before+self.ip
 
     # Function send_cmd: send one 
     def send_cmd(self,cmd): 
@@ -90,11 +89,8 @@ class remote_client:
             print 'Timeout Error!'
 
         child.expect(pexpect.EOF)
-        print "send cmd '"+cmd+"'"
 
-    def __del__(self):
-
-        print 'Exit\r\n'
+#    def __del__(self):
 
 """
    This is a local_host class to describe ourself,we can 
@@ -139,7 +135,7 @@ class local_host():
             print 'Timeout Error'
             
         #child.expect(pexpect.EOF)
-        print "\nlocal cmd '"+cmd+"'"
+#        print "\nlocal cmd '"+cmd+"'"
 
 
 #Function: To verify if the ip is accessable
@@ -160,13 +156,44 @@ def valid_ip(addr):
         child.close()
         return False
 
+class  update_client(threading.Thread):
+
+    ip = ''
+    file_list = ''
+    cmd_list = ''
+    usr = 'root'
+    pwd = 'test0000'
+
+    def __init__(self, ip, file_list, cmd_list):
+
+        threading.Thread.__init__(self)
+        self.ip = ip
+        self.file_list = file_list
+        self.cmd_list = cmd_list
+
+    def run(self):
+
+        host = local_host('cros','cros')
+
+        host.local_cmd('rm /home/cros/.ssh/known_hosts')
+
+        child = remote_client(self.ip,self.usr,self.pwd)
+        child.send_file(self.file_list)
+        child.send_cmd(self.cmd_list)
+        
 # The main function
 if __name__ == '__main__':  
 
     file_list = (
         #['image.dev.bin-800M','/usr/local/']
-        ['ddr_read_data_eye_up.up','/usr/local/'],
-        ['ddr_read_data_eye_down.down','/usr/local/']
+        ['image.dev.bin-800M','/usr/local/'],
+        ['image.dev.bin-800M','/usr/local/'],
+        ['ddr_read_data_eye_down.down','/usr/local/'],
+        ['ddr_read_data_eye_up.up','/usr/local/']
+    )
+
+    cmd_list =(
+
     )    
 
     ip_base = '192.168.2'    
@@ -174,11 +201,16 @@ if __name__ == '__main__':
     ip_filter = [
         101
     ]
+    #count = 0
 
-    count = 0
+    client1 = update_client('192.168.1.101',file_list,cmd_list)
+    client2 = update_client('192.168.1.104',file_list,cmd_list)
+    client3 = update_client('192.168.1.103',file_list,cmd_list)
 
-    host = local_host('cros','cros')
-
+    client1.start()
+    client2.start()
+#    client3.start()
+"""
     for ip in range(118,119):
 
         host.local_cmd('rm /home/cros/.ssh/known_hosts')
@@ -190,19 +222,15 @@ if __name__ == '__main__':
             print "Invalid IP"
 
         else:
+
+            client1 = update_client()
              
-            count = count +1
             
             client = remote_client('192.168.2.%s'%ip,'root','test0000')
     
             client.send_file(file_list)
-
-            # client.send_cmd('sudo chmod 777 update_firmware && /usr/local/update_firmware')
-            #client.send_cmd('stop powerd')
+"""
             
-            del client
-
-    print 'Successfuly update %s client'%count
 
 
 
