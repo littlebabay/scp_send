@@ -16,6 +16,7 @@ Best regard for you.
 import pexpect 
 import time
 import threading
+from config import config
 
 # User login information 
 user = 'root'  
@@ -183,55 +184,21 @@ class  update_client(threading.Thread):
         
 # The main function
 if __name__ == '__main__':  
-
-    file_list = (
-        #['image.dev.bin-800M','/usr/local/']
-        ['image.dev.bin-800M','/usr/local/'],
-        ['image.dev.bin-800M','/usr/local/'],
-        ['ddr_read_data_eye_down.down','/usr/local/'],
-        ['ddr_read_data_eye_up.up','/usr/local/']
-    )
-
-    cmd_list =(
-
-    )    
-
-    ip_base = '192.168.2'    
-
-    ip_filter = [
-        101
-    ]
-    #count = 0
-
-    client1 = update_client('192.168.1.101',file_list,cmd_list)
-    client2 = update_client('192.168.1.104',file_list,cmd_list)
-    client3 = update_client('192.168.1.103',file_list,cmd_list)
-
-    client1.start()
-    client2.start()
-#    client3.start()
-"""
-    for ip in range(118,119):
-
-        host.local_cmd('rm /home/cros/.ssh/known_hosts')
    
-        if ip in ip_filter:
+    # Create a empoty client thread object list 
+    client_list = []
+
+    for ip in range(config.ip_range[0],config.ip_range[1]):
+        if ip in config.ip_filter:
             print "Skip Ip"
 
-        elif valid_ip('192.168.2.%s'%ip) == False:
+        elif valid_ip('%s%s'%(config.ip_base,ip)) == False:
             print "Invalid IP"
 
         else:
+            client_list.append(update_client('%s%s'%(config.ip_base,ip),config.file_list,config.cmd_list))
 
-            client1 = update_client()
-             
-            
-            client = remote_client('192.168.2.%s'%ip,'root','test0000')
     
-            client.send_file(file_list)
-"""
-            
-
-
-
+    for client in client_list:
+        client.start()
 
