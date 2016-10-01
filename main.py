@@ -18,10 +18,6 @@ import time
 import threading
 from config import config
 
-# User login information 
-user = 'root'  
-mypassword = 'test0000'
-
 """
   This is remote_client class to discribe a remote client machine.
 we can do some operates on the remote machine through network.We 
