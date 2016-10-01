@@ -158,43 +158,45 @@ class  update_client(threading.Thread):
     ip = ''
     file_list = ''
     cmd_list = ''
-    usr = 'root'
-    pwd = 'test0000'
+    usr = ''
+    pwd = ''
 
-    def __init__(self, ip, file_list, cmd_list):
+    def __init__(self, ip, usr, pwd, file_list, cmd_list):
 
         threading.Thread.__init__(self)
         self.ip = ip
+        self.usr = usr
+        self.pwd = pwd
         self.file_list = file_list
         self.cmd_list = cmd_list
 
     def run(self):
+        
+        if valid_ip(self.ip) == False:
+            print "Invalid IP"
+        else:
+            host = local_host(config.usr_local,config.pwd_local)
 
-        host = local_host('cros','cros')
+            host.local_cmd('rm /home/cros/.ssh/known_hosts')
 
-        host.local_cmd('rm /home/cros/.ssh/known_hosts')
-
-        child = remote_client(self.ip,self.usr,self.pwd)
-        child.send_file(self.file_list)
-        child.send_cmd(self.cmd_list)
+            child = remote_client(self.ip,self.usr,self.pwd)
+            child.send_file(self.file_list)
+            child.send_cmd(self.cmd_list)
         
 # The main function
 if __name__ == '__main__':  
    
     # Create a empoty client thread object list 
     client_list = []
-
+    
+    # Skip user assign ip and invalid ip ,then creat a thread for every valid ip.
     for ip in range(config.ip_range[0],config.ip_range[1]):
         if ip in config.ip_filter:
             print "Skip Ip"
-
-        elif valid_ip('%s%s'%(config.ip_base,ip)) == False:
-            print "Invalid IP"
-
         else:
-            client_list.append(update_client('%s%s'%(config.ip_base,ip),config.file_list,config.cmd_list))
+            client_list.append(update_client('%s%s'%(config.ip_base,ip),config.usr_client,config.pwd_client,config.file_list,config.cmd_list))
 
-    
+    # start all the threads
     for client in client_list:
         client.start()
 

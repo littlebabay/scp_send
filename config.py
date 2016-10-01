@@ -16,12 +16,24 @@ class config:
     cmd_list = (
 
     )    
+
+    # local host name
+    usr_local = 'cros'
+
+    #local host password
+    pwd_local = 'cros'
+    
+    # client user name
+    usr_client = 'root'
+    
+    # client password
+    pwd_client = 'test0000'    
  
     # network segment base address
     ip_base = '192.168.1.' 
    
     # ip address range to udate   
-    ip_range = (100,105)
+    ip_range = (100,110)
 
     # ip address to skip,like ip the host using
     ip_filter = [100]
