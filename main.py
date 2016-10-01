@@ -64,28 +64,29 @@ class remote_client:
             print child.before+self.ip
 
     # Function send_cmd: send one 
-    def send_cmd(self,cmd): 
+    def send_cmd(self,cmd_list): 
+        for cmd in cmd_list:
+            child = pexpect.spawn('ssh %s@%s %s' % (self.usr, self.ip, cmd))
+            try:
+                i = child.expect(['Password:','yes',pexpect.TIMEOUT],timeout=20)
+                if i == 0:
+                    child.sendline (self.pwd)
+                elif i == 1:
+                    child.sendline ('yes')
+                    child.expect ('Password:')
+                    child.sendline (self.pwd)
+                    child.read()
 
-        child = pexpect.spawn('ssh %s@%s %s' % (self.usr, self.ip, cmd))
-        try:
-            i = child.expect(['Password:','yes',pexpect.TIMEOUT],timeout=5)
-            if i == 0:
-                child.sendline (self.pwd)
-            elif i == 1:
-                child.sendline ('yes')
-                child.expect ('Password:')
-                child.sendline (self.pwd)
-                child.read()
+            except pexpect.EOF:
+                child.close()
+                print 'Not receive the needed key word!'
 
-        except pexpect.EOF:
-            child.close()
-            print 'Not receive the needed key word!'
+            except pexpect.TIMEOUT: 
+                child.close()
+                print 'Timeout Error!'
 
-        except pexpect.TIMEOUT: 
-            child.close()
-            print 'Timeout Error!'
-
-        child.expect(pexpect.EOF)
+            child.expect(pexpect.EOF)
+            print child.before
 
 #    def __del__(self):
 
@@ -182,7 +183,7 @@ class  update_client(threading.Thread):
             child = remote_client(self.ip,self.usr,self.pwd)
             child.send_file(self.file_list)
             child.send_cmd(self.cmd_list)
-        
+            
 # The main function
 if __name__ == '__main__':  
    
