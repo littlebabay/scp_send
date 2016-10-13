@@ -15,9 +15,15 @@ class config:
     )  
     #cmd list discribe the cmd list we want to run on client
     cmd_list = (
-        'flashrom -p host -w /usr/local/image.dev.bin',
-        'reboot'
-    )    
+        'cd /root/',
+        # 'sudo reboot'
+    ) 
+   
+    # local host isa file  
+    rsa = ( 
+            ['/home/cros/.ssh/id_rsa.pub','/root/.ssh/authorized_keys'],          
+            #['/home/cros/.ssh/id_rsa.pub','/root/.ssh/id_rsa.pub'],
+          )
 
     # local host name
     usr_local = 'cros'
@@ -35,9 +41,9 @@ class config:
     ip_base = '192.168.1.' 
    
     # ip address range to udate   
-    ip_range = (100,105)
+    ip_range = (100,110)
 
     # ip address to skip,like ip the host using
     ip_filter = [
-        100, 101
+        106
     ]

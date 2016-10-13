@@ -16,6 +16,7 @@ Best regard for you.
 import pexpect 
 import time
 import threading
+import os
 from config import config
 
 """
@@ -36,59 +37,51 @@ class remote_client:
         self.usr = usr
         self.pwd = pwd
     
+    # Function: Building ssh authentication by sending local rsa file to remote host  
+    def authentication(self):
+
+        for rsa in config.rsa:   
+            child = pexpect.spawn('scp  %s %s@%s:%s' % ( rsa[0], self.usr, self.ip, rsa[1] ))  
+            try: 
+                i = child.expect (['Password:','yes', ' ' ,pexpect.TIMEOUT],timeout = 30)  
+                # print '%s'% (i) 
+                if i == 0:
+                    child.sendline(self.pwd)
+                    child.read()
+                elif i == 1:
+                    child.sendline('yes')
+                    child.expect('Password:')
+                    child.sendline(self.pwd)
+                    child.read()
+                elif i == 2:
+                    return True 
+                child.read()
+
+            except pexpect.EOF:
+                child.close()
+                print 'Authentication Fail at %s: Do not received valid respose!'
+                return False
+
+            except pexpect.TIMEOUT:
+                child.close()
+                print 'Authentication Fail at %s: Timeout Error!'%(self.ip)
+                return False
+
+        return True
+
     # Function send_file: send one file every time 
     def send_file(self, file_list):
    
         for files in file_list:
-
-            child = pexpect.spawn('scp -C %s %s@%s:%s' % ( files[0], self.usr, self.ip, files[1] ))  
-            try: 
-                i = child.expect (['Password:','yes',pexpect.TIMEOUT],timeout = 30)  
-            
-                if i == 0:
-                    child.sendline (self.pwd)
-                elif i == 1:
-                    child.sendline ('yes')
-                    child.expect('Password:')
-                    child.sendline (self.pwd)
-                   # child.read()
-            except pexpect.EOF:
-                child.close()
-                print 'Not receive the needed key word!'
-
-            except pexpect.TIMEOUT:
-                child.close()
-                print 'Timeout Error!'
-
-            child.expect(pexpect.EOF)  
-            print child.before+self.ip
+            os.system('scp -C %s %s@%s:%s' % ( files[0], self.usr, self.ip, files[1] ))  
+            print self.ip           
 
     # Function send_cmd: send one 
     def send_cmd(self,cmd_list): 
+
         for cmd in cmd_list:
-            child = pexpect.spawn('ssh %s@%s %s' % (self.usr, self.ip, cmd))
-            try:
-                i = child.expect(['Password:','yes',pexpect.TIMEOUT],timeout=20)
-                if i == 0:
-                    child.sendline (self.pwd)
-                elif i == 1:
-                    child.sendline ('yes')
-                    child.expect ('Password:')
-                    child.sendline (self.pwd)
-                    child.read()
+            os.system('ssh %s@%s %s' % (self.usr, self.ip, cmd))  
 
-            except pexpect.EOF:
-                child.close()
-                print 'Not receive the needed key word!'
-
-            except pexpect.TIMEOUT: 
-                child.close()
-                print 'Timeout Error!'
-
-            child.expect(pexpect.EOF)
-            print child.before
-
-#    def __del__(self):
 
 """
    This is a local_host class to describe ourself,we can 
@@ -136,23 +129,39 @@ class local_host():
 #        print "\nlocal cmd '"+cmd+"'"
 
 
-#Function: To verify if the ip is accessable
 
 def valid_ip(addr):
 
     try:
-        child = pexpect.spawn('ssh root@%s %s'%(addr,'cd'))
-        i = child.expect(['yes','Password:',pexpect.TIMEOUT],timeout=5)
-        if i == 0 or i ==1:
+        child = pexpect.spawn('ssh root@%s %s'%(addr,'uname -a'))
+        i = child.expect(['yes','Password:','Linux',pexpect.TIMEOUT],timeout=2)
+        # print '%s'%(i)
+        if i == 0 :
             child.sendline('no')
+            child.read()
+            child.close()
+            return True
+        elif i == 1 :
+            child.sendline('test0000')
+            child.read()
+            child.close()
+            return True
+        elif i == 2:
+            child.close()
             return True
         else:
+            child.close()
             return False
 
     except pexpect.EOF:
 
         child.close()
         return False
+
+    except pexpect.TIMEOUT:
+        child.close()
+        return False
+
 
 class  update_client(threading.Thread):
 
@@ -173,20 +182,23 @@ class  update_client(threading.Thread):
 
     def run(self):
         
-        if valid_ip(self.ip) == False:
-            print "Invalid IP"
-        else:
-            host = local_host(config.usr_local,config.pwd_local)
+        if (valid_ip(self.ip)) == False:
+            return False
+        else: 
+            # host = local_host(config.usr_local,config.pwd_local)
 
-            host.local_cmd('rm /home/cros/.ssh/known_hosts')
+            # host.local_cmd('rm /home/cros/.ssh/known_hosts')
 
             child = remote_client(self.ip,self.usr,self.pwd)
-            child.send_file(self.file_list)
-            child.send_cmd(self.cmd_list)
+        
+            result = child.authentication()
+        
+            if result == True:
+                child.send_file(self.file_list)
+                child.send_cmd(self.cmd_list)
             
 # The main function
 if __name__ == '__main__':  
-   
     # Create a empoty client thread object list 
     client_list = []
     
@@ -200,4 +212,5 @@ if __name__ == '__main__':
     # start all the threads
     for client in client_list:
         client.start()
+    
 
