@@ -128,8 +128,10 @@ class local_host():
         #child.expect(pexpect.EOF)
 #        print "\nlocal cmd '"+cmd+"'"
 
-
-
+"""
+Function: To virify if the given ip address is reachable, Note that please this function 
+now can only used when the remote client run a *nix operation system.
+"""
 def valid_ip(addr):
 
     try:
@@ -162,7 +164,11 @@ def valid_ip(addr):
         child.close()
         return False
 
-
+"""
+A thread that packaging all we want to do on a special machine, 
+we will start a lots of such threads at the same time to shorten
+the total time when we do a mass update.
+"""
 class  update_client(threading.Thread):
 
     ip = ''
